@@ -1,14 +1,55 @@
-def call(String project, String hubUser) {
-    sh "docker image build -t ${hubUser}/${project} ."
-    sh "docker tag ${hubUser}/${project} ${hubUser}/${project}:${ImageTag}"
-    sh "docker tag ${hubUser}/${project} ${hubUser}/${project}:latest"
-    withCredentials([usernamePassword(
-            credentialsId: "docker_cred",
-            usernameVariable: "USER",
-            passwordVariable: "PASS"
-    )]) {
-        sh "docker login -u '$USER' -p '$PASS'"
+def call(String project, String hubUser, String imageTag) {
+
+    echo "======================================"
+    echo "DOCKER BUILD"
+    echo "======================================"
+
+    sh """
+        docker build \
+        -t ${hubUser}/${project}:${imageTag} .
+    """
+
+
+    echo "======================================"
+    echo "TAGGING DOCKER IMAGE"
+    echo "======================================"
+
+    sh """
+        docker tag \
+        ${hubUser}/${project}:${imageTag} \
+        ${hubUser}/${project}:latest
+    """
+
+
+    echo "======================================"
+    echo "DOCKER LOGIN"
+    echo "======================================"
+
+    withCredentials([
+        usernamePassword(
+            credentialsId: 'docker_cred',
+            usernameVariable: 'USER',
+            passwordVariable: 'PASS'
+        )
+    ]) {
+
+        sh '''
+            echo "$PASS" | docker login \
+            -u "$USER" \
+            --password-stdin
+        '''
     }
-    sh "docker image push ${hubUser}/${project}:${ImageTag}"
-    sh "docker image push ${hubUser}/${project}:latest"
+
+
+    echo "======================================"
+    echo "PUSHING IMAGE"
+    echo "======================================"
+
+    sh """
+        docker push ${hubUser}/${project}:${imageTag}
+    """
+
+    sh """
+        docker push ${hubUser}/${project}:latest
+    """
 }
